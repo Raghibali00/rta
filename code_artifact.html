@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق عدّاد صعود الدرج | حرق السعرات</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            900: '#881337',
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .touch-btn {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .touch-btn:active {
+            transform: scale(0.94);
+        }
+        /* Custom progress ring smooth animation */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <!-- Top Header Navigation -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center shadow-lg shadow-rose-950">
+                    <i class="fa-solid fa-stairs text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base text-white leading-tight">تحدي صعود الدرج</h1>
+                    <p class="text-xs text-rose-400 font-medium">هدف: <span id="hdrTargetKcal">1000</span> سعرة حرارية</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button id="soundToggleBtn" onclick="toggleSound()" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-rose-400"></i>
+                </button>
+                <button onclick="openSettingsModal()" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-gear text-slate-300"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto w-full px-4 py-4 flex-1 flex flex-col justify-around gap-4">
+
+        <!-- Top Overview Card -->
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-weight-scale text-rose-400"></i>
+                <span>الوزن: <strong id="dispWeight" class="text-slate-200">95</strong> كغم</span>
+            </div>
+            <div class="h-4 w-px bg-slate-800"></div>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-amber-400"></i>
+                <span>الدرج: <strong id="dispStepsPerFlight" class="text-slate-200">10</strong> درجات</span>
+            </div>
+            <div class="h-4 w-px bg-slate-800"></div>
+            <div class="flex items-center gap-2">
+                <i id="dispModeIcon" class="fa-solid fa-arrows-up-down text-emerald-400"></i>
+                <span id="dispModeText" class="text-slate-200">صعود ونزول</span>
+            </div>
+        </div>
+
+        <!-- Center Action & Circular Counter -->
+        <div class="relative flex flex-col items-center justify-center my-2">
+            
+            <!-- Circular Progress Outer Ring -->
+            <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center">
+                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                    <!-- Background Circle -->
+                    <circle cx="100" cy="100" r="88" stroke="currentColor" stroke-width="12" class="text-slate-800/80" fill="transparent" />
+                    <!-- Progress Circle -->
+                    <circle id="progressCircle" cx="100" cy="100" r="88" stroke="url(#gradient)" stroke-width="12" 
+                            stroke-dasharray="552.92" stroke-dashoffset="552.92" stroke-linecap="round" fill="transparent" class="progress-ring__circle" />
+                    <!-- SVG Gradient -->
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#f43f5e" />
+                            <stop offset="100%" stop-color="#f59e0b" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+
+                <!-- GIANT TAP BUTTON (INSIDE CIRCLE) -->
+                <button id="mainTapBtn" onclick="incrementCounter()" 
+                        class="absolute inset-4 rounded-full bg-gradient-to-b from-slate-800 to-slate-900 border-4 border-slate-700/60 shadow-2xl flex flex-col items-center justify-center gap-1 touch-btn active:border-rose-500 group transition duration-150 overflow-hidden">
+                    
+                    <!-- Subtle Glow Effect -->
+                    <div class="absolute inset-0 bg-rose-500/10 opacity-0 group-active:opacity-100 transition-opacity"></div>
+                    
+                    <span class="text-xs uppercase tracking-widest text-slate-400 font-bold">المرات المكتملة</span>
+                    <span id="completedRounds" class="text-6xl sm:text-7xl font-extrabold text-white tracking-tight drop-shadow-md transition-all">0</span>
+                    
+                    <div class="flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold mt-1">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>انقر هنا عند الوصول</span>
+                    </div>
+
+                    <span class="text-[11px] text-slate-400 mt-1">
+                        المتبقي: <strong id="remainingRounds" class="text-amber-400 font-bold">350</strong> مرّة
+                    </span>
+                </button>
+            </div>
+
+            <!-- Quick Control Actions Under Button -->
+            <div class="flex items-center gap-3 mt-4">
+                <button onclick="undoCounter()" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-800 hover:text-white active:scale-95 transition">
+                    <i class="fa-solid fa-rotate-left text-rose-400"></i>
+                    <span>تراجع (-1)</span>
+                </button>
+                <button onclick="toggleWorkoutTimer()" id="timerToggleBtn" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400 text-xs font-semibold hover:bg-slate-800 active:scale-95 transition">
+                    <i id="timerIcon" class="fa-solid fa-play"></i>
+                    <span id="timerBtnText">بدء التوقيت</span>
+                </button>
+                <button onclick="confirmReset()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs font-semibold hover:bg-rose-900/30 hover:text-rose-400 active:scale-95 transition">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>تصفير</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Detailed Statistics Grid -->
+        <div class="grid grid-cols-2 gap-3">
+            
+            <!-- Calories Burned Box -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                    <span class="text-xs font-bold">السعرات المحروقة</span>
+                    <i class="fa-solid fa-fire text-rose-500 text-base"></i>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span id="burnedKcal" class="text-2xl font-extrabold text-white">0</span>
+                    <span class="text-xs text-slate-400">/ <span id="targetKcalDisp">1000</span> kcal</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                    <div id="kcalProgressBar" class="bg-gradient-to-r from-rose-500 to-amber-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Elapsed Time Box -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                    <span class="text-xs font-bold">الوقت المنقضي</span>
+                    <i class="fa-solid fa-stopwatch text-amber-400 text-base"></i>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span id="timerDisplay" class="text-2xl font-extrabold text-white font-mono">00:00</span>
+                </div>
+                <p id="workoutStatusText" class="text-[10px] text-slate-400 mt-2">متوقف مؤقتاً</p>
+            </div>
+
+            <!-- Average Pace Box -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                    <span class="text-xs font-bold">معدل السرعة</span>
+                    <i class="fa-solid fa-bolt text-yellow-400 text-base"></i>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span id="paceDisplay" class="text-xl font-bold text-white">0</span>
+                    <span class="text-xs text-slate-400">ثانية/جولة</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">المتوسط لكل 10 درجات</p>
+            </div>
+
+            <!-- Est Remaining Time Box -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                    <span class="text-xs font-bold">الوقت المتبقي التقديري</span>
+                    <i class="fa-solid fa-hourglass-half text-sky-400 text-base"></i>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span id="estTimeLeft" class="text-xl font-bold text-white">--</span>
+                    <span class="text-xs text-slate-400">دقيقة</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">يعتمد على سرعتك الحالية</p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-rose-500"></i>
+                    <span>إعدادات التحدي</span>
+                </h2>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Weight Input -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">الوزن الحالي (كغم):</label>
+                    <div class="relative">
+                        <input type="number" id="inputWeight" value="95" min="30" max="250" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-rose-500">
+                        <span class="absolute left-3 top-2.5 text-xs text-slate-400">كغم</span>
+                    </div>
+                </div>
+
+                <!-- Target Kcal Input -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">هدف السعرات اليومي (kcal):</label>
+                    <div class="relative">
+                        <input type="number" id="inputTargetKcal" value="1000" step="50" min="100" max="5000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-rose-500">
+                        <span class="absolute left-3 top-2.5 text-xs text-slate-400">سعرة</span>
+                    </div>
+                </div>
+
+                <!-- Steps Per Flight -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">عدد درجات الشوط الواحد:</label>
+                    <input type="number" id="inputStepsPerFlight" value="10" min="1" max="100" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-rose-500">
+                </div>
+
+                <!-- Movement Type -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">طريقة الحركة:</label>
+                    <select id="inputMode" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm font-semibold focus:outline-none focus:border-rose-500">
+                        <option value="both">صعود ونزول بالدرج (الافتراضي)</option>
+                        <option value="upOnly">صعود فقط على الدرج (نزول بالمصعد لحماية الركبة)</option>
+                    </select>
+                </div>
+
+                <!-- Voice Announce Checkbox -->
+                <div class="flex items-center justify-between pt-2">
+                    <span class="text-xs font-bold text-slate-300">قراءة العدد صوتياً عند الضغط:</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="voiceAnnounceToggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveSettings()" class="flex-1 bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-bold py-2.5 rounded-xl text-sm shadow-lg shadow-rose-950 transition active:scale-95">
+                    حفظ وتحديث
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRM RESET MODAL -->
+    <div id="resetModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-xs rounded-3xl p-5 shadow-2xl text-center flex flex-col gap-4">
+            <div class="w-12 h-12 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white">إعادة تصفير العداد؟</h3>
+                <p class="text-xs text-slate-400 mt-1">سيتم مسح جميع المرات المكتملة والسعرات المحسوبة للجلسة الحالية.</p>
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button onclick="executeReset()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-xl text-xs transition">
+                    نعم، تصفير
+                </button>
+                <button onclick="closeResetModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-xs transition">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Application State ---
+        let appState = {
+            weight: 95,            // kg
+            targetKcal: 1000,      // kcal
+            stepsPerFlight: 10,   // steps
+            mode: 'both',          // 'both' (up & down) or 'upOnly'
+            completedRounds: 0,
+            soundEnabled: true,
+            voiceAnnounce: true,
+            startTime: null,
+            elapsedSeconds: 0,
+            isTimerRunning: false,
+            timerInterval: null
+        };
+
+        // --- Audio Synthesizer (Web Audio API) ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playBeep(freq = 600, duration = 0.1, type = 'sine') {
+            if (!appState.soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio not supported or blocked");
+            }
+        }
+
+        function playSuccessChime() {
+            if (!appState.soundEnabled) return;
+            playBeep(523.25, 0.1, 'sine'); // C5
+            setTimeout(() => playBeep(659.25, 0.15, 'sine'), 80); // E5
+            setTimeout(() => playBeep(783.99, 0.2, 'sine'), 160); // G5
+        }
+
+        function speakNumber(text) {
+            if (!appState.soundEnabled || !appState.voiceAnnounce) return;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // stop current speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ar-SA';
+                utterance.rate = 1.1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // --- Calorie Calculation Formulas ---
+        // Basic Physics & MET approximations based on body weight:
+        // Climbing 1 step ~ 0.17 MET-sec adjusted for weight.
+        // Standard formula: Energy per step up ~ (weight / 70) * 0.17 kcal
+        // Energy per step down ~ (weight / 70) * 0.05 kcal
+        function getKcalPerRound() {
+            const weightRatio = appState.weight / 70.0;
+            const kcalPerStepUp = 0.17 * weightRatio;
+            const kcalPerStepDown = 0.05 * weightRatio;
+
+            let totalPerRound = kcalPerStepUp * appState.stepsPerFlight;
+            if (appState.mode === 'both') {
+                totalPerRound += (kcalPerStepDown * appState.stepsPerFlight);
+            }
+            return Math.max(totalPerRound, 0.1);
+        }
+
+        function getTotalRequiredRounds() {
+            const kcalPerRound = getKcalPerRound();
+            return Math.ceil(appState.targetKcal / kcalPerRound);
+        }
+
+        function getBurnedKcal() {
+            const kcalPerRound = getKcalPerRound();
+            return Math.round(appState.completedRounds * kcalPerRound * 10) / 10;
+        }
+
+        // --- UI Rendering Updates ---
+        function updateUI() {
+            const requiredRounds = getTotalRequiredRounds();
+            const remainingRounds = Math.max(0, requiredRounds - appState.completedRounds);
+            const burnedKcal = getBurnedKcal();
+
+            // Update text elements
+            document.getElementById('completedRounds').innerText = appState.completedRounds;
+            document.getElementById('remainingRounds').innerText = remainingRounds;
+            document.getElementById('burnedKcal').innerText = burnedKcal;
+            document.getElementById('targetKcalDisp').innerText = appState.targetKcal;
+            document.getElementById('hdrTargetKcal').innerText = appState.targetKcal;
+            
+            document.getElementById('dispWeight').innerText = appState.weight;
+            document.getElementById('dispStepsPerFlight').innerText = appState.stepsPerFlight;
+            
+            if (appState.mode === 'both') {
+                document.getElementById('dispModeText').innerText = "صعود ونزول";
+                document.getElementById('dispModeIcon').className = "fa-solid fa-arrows-up-down text-emerald-400";
+            } else {
+                document.getElementById('dispModeText').innerText = "صعود فقط (مصعد)";
+                document.getElementById('dispModeIcon').className = "fa-solid fa-arrow-up text-amber-400";
+            }
+
+            // Progress Bar & Circle
+            const progressRatio = Math.min(1, appState.completedRounds / requiredRounds);
+            const progressBar = document.getElementById('kcalProgressBar');
+            progressBar.style.width = `${(burnedKcal / appState.targetKcal) * 100}%`;
+
+            // SVG Radial Progress (Circle stroke offset calculation)
+            const circle = document.getElementById('progressCircle');
+            const circumference = 2 * Math.PI * 88; // r=88 -> ~552.92
+            const offset = circumference - (progressRatio * circumference);
+            circle.style.strokeDashoffset = offset;
+
+            // Update Pace and Est Time Remaining
+            updatePerformanceStats();
+            saveToLocalStorage();
+        }
+
+        function updatePerformanceStats() {
+            if (appState.completedRounds > 0 && appState.elapsedSeconds > 0) {
+                const paceInSec = Math.round(appState.elapsedSeconds / appState.completedRounds);
+                document.getElementById('paceDisplay').innerText = paceInSec;
+
+                const requiredRounds = getTotalRequiredRounds();
+                const remainingRounds = Math.max(0, requiredRounds - appState.completedRounds);
+                const estSecLeft = remainingRounds * paceInSec;
+                const estMinLeft = Math.ceil(estSecLeft / 60);
+                document.getElementById('estTimeLeft').innerText = estMinLeft > 0 ? estMinLeft : '0';
+            } else {
+                document.getElementById('paceDisplay').innerText = '0';
+                document.getElementById('estTimeLeft').innerText = '--';
+            }
+        }
+
+        // --- Interaction Logic ---
+        function incrementCounter() {
+            initAudio();
+            
+            // Auto start timer on first tap
+            if (!appState.isTimerRunning && appState.completedRounds === 0) {
+                startTimer();
+            }
+
+            appState.completedRounds++;
+            playSuccessChime();
+            speakNumber(appState.completedRounds.toString());
+
+            // Vibration feedback if supported
+            if (navigator.vibrate) {
+                navigator.vibrate(60);
+            }
+
+            updateUI();
+        }
+
+        function undoCounter() {
+            if (appState.completedRounds > 0) {
+                appState.completedRounds--;
+                playBeep(300, 0.1, 'sawtooth');
+                updateUI();
+            }
+        }
+
+        // --- Timer Controls ---
+        function toggleWorkoutTimer() {
+            initAudio();
+            if (appState.isTimerRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            if (appState.isTimerRunning) return;
+            appState.isTimerRunning = true;
+            document.getElementById('timerToggleBtn').className = "flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-400 text-xs font-semibold hover:bg-rose-900/50 active:scale-95 transition";
+            document.getElementById('timerIcon').className = "fa-solid fa-pause";
+            document.getElementById('timerBtnText').innerText = "إيقاف مؤقت";
+            document.getElementById('workoutStatusText').innerText = "التمرين شغال الآن...";
+
+            appState.timerInterval = setInterval(() => {
+                appState.elapsedSeconds++;
+                formatTimerDisplay();
+                updatePerformanceStats();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            appState.isTimerRunning = false;
+            clearInterval(appState.timerInterval);
+            document.getElementById('timerToggleBtn').className = "flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400 text-xs font-semibold hover:bg-slate-800 active:scale-95 transition";
+            document.getElementById('timerIcon').className = "fa-solid fa-play";
+            document.getElementById('timerBtnText').innerText = "استئناف التوقيت";
+            document.getElementById('workoutStatusText').innerText = "متوقف مؤقتاً";
+        }
+
+        function formatTimerDisplay() {
+            const mins = Math.floor(appState.elapsedSeconds / 60);
+            const secs = appState.elapsedSeconds % 60;
+            const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            document.getElementById('timerDisplay').innerText = formatted;
+        }
+
+        // --- Reset Dialog ---
+        function confirmReset() {
+            document.getElementById('resetModal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.add('hidden');
+        }
+
+        function executeReset() {
+            pauseTimer();
+            appState.completedRounds = 0;
+            appState.elapsedSeconds = 0;
+            formatTimerDisplay();
+            updateUI();
+            closeResetModal();
+            playBeep(250, 0.2, 'square');
+        }
+
+        // --- Sound Toggle ---
+        function toggleSound() {
+            appState.soundEnabled = !appState.soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            if (appState.soundEnabled) {
+                icon.className = "fa-solid fa-volume-high text-rose-400";
+                playBeep(800, 0.1);
+            } else {
+                icon.className = "fa-solid fa-volume-xmark text-slate-500";
+            }
+        }
+
+        // --- Settings Modal Handlers ---
+        function openSettingsModal() {
+            document.getElementById('inputWeight').value = appState.weight;
+            document.getElementById('inputTargetKcal').value = appState.targetKcal;
+            document.getElementById('inputStepsPerFlight').value = appState.stepsPerFlight;
+            document.getElementById('inputMode').value = appState.mode;
+            document.getElementById('voiceAnnounceToggle').checked = appState.voiceAnnounce;
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            const w = parseFloat(document.getElementById('inputWeight').value);
+            const k = parseInt(document.getElementById('inputTargetKcal').value);
+            const s = parseInt(document.getElementById('inputStepsPerFlight').value);
+            const m = document.getElementById('inputMode').value;
+            const v = document.getElementById('voiceAnnounceToggle').checked;
+
+            if (w > 0) appState.weight = w;
+            if (k > 0) appState.targetKcal = k;
+            if (s > 0) appState.stepsPerFlight = s;
+            appState.mode = m;
+            appState.voiceAnnounce = v;
+
+            closeSettingsModal();
+            updateUI();
+            playBeep(700, 0.1);
+        }
+
+        // --- LocalStorage State Persistence ---
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('stair_tracker_state', JSON.stringify({
+                    weight: appState.weight,
+                    targetKcal: appState.targetKcal,
+                    stepsPerFlight: appState.stepsPerFlight,
+                    mode: appState.mode,
+                    completedRounds: appState.completedRounds,
+                    elapsedSeconds: appState.elapsedSeconds,
+                    voiceAnnounce: appState.voiceAnnounce
+                }));
+            } catch (e) {
+                console.log("LocalStorage not available");
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('stair_tracker_state');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    appState.weight = parsed.weight || 95;
+                    appState.targetKcal = parsed.targetKcal || 1000;
+                    appState.stepsPerFlight = parsed.stepsPerFlight || 10;
+                    appState.mode = parsed.mode || 'both';
+                    appState.completedRounds = parsed.completedRounds || 0;
+                    appState.elapsedSeconds = parsed.elapsedSeconds || 0;
+                    if (parsed.voiceAnnounce !== undefined) appState.voiceAnnounce = parsed.voiceAnnounce;
+                    formatTimerDisplay();
+                }
+            } catch (e) {
+                console.log("Error loading LocalStorage");
+            }
+        }
+
+        // --- Initialization on Load ---
+        window.onload = function() {
+            loadFromLocalStorage();
+            updateUI();
+        };
+    </script>
+</body>
+</html>
